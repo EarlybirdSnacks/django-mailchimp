@@ -11,11 +11,10 @@ from .utils import (build_dict,
                     Cache,
                     WarningLogger)
 from .exceptions import (MCCampaignDoesNotExist,
-                                  MCListDoesNotExist,
-                                  MCConnectionFailed,
-                                  MCTemplateDoesNotExist,
-                                  MCFolderDoesNotExist)
-
+                         MCListDoesNotExist,
+                         MCConnectionFailed,
+                         MCTemplateDoesNotExist,
+                         MCFolderDoesNotExist)
 from .constants import (STATUS_OK,
                         REGULAR_CAMPAIGN,
                         PLAINTEXT_CAMPAIGN,
@@ -51,21 +50,23 @@ class SegmentCondition(object):
 
     def check_interests(self, member):
         interests = self.value.split(',')
+
         if self.op == 'all':
             for interest in interests:
                 if interest not in member.interests:
                     return False
             return True
-        elif self.op == 'one':
+
+        if self.op == 'one':
             for interest in interests:
                 if interest in member.interests:
                     return True
             return False
-        else:
-            for interest in interests:
-                if interest in member.interests:
-                    return False
-            return True
+
+        for interest in interests:
+            if interest in member.interests:
+                return False
+        return True
 
     def merge_check(self, member):
         return self.OPERATORS[self.op](member.merges[self.field.upper()], self.value)
@@ -99,13 +100,31 @@ class BaseChimpObject(object):
 
 
 class Campaign(BaseChimpObject):
-    _attrs = ('archive_url', 'create_time', 'emails_sent', 'folder_id',
-              'from_email', 'from_name', 'id', 'inline_css', 'list_id',
-              'send_time', 'status', 'subject', 'title', 'to_name', 'type',
+    _attrs = ('archive_url',
+              'create_time',
+              'emails_sent',
+              'folder_id',
+              'from_email',
+              'from_name',
+              'id',
+              'inline_css',
+              'list_id',
+              'send_time',
+              'status',
+              'subject',
+              'title',
+              'to_name',
+              'type',
               'web_id')
 
-    _methods =  ('delete', 'pause', 'replicate', 'resume', 'schedule',
-                 'send_now', 'send_test', 'unschedule')
+    _methods = ('delete',
+                'pause',
+                'replicate',
+                'resume',
+                'schedule',
+                'send_now',
+                'send_test',
+                'unschedule')
 
     verbose_attr = 'subject'
 
@@ -115,6 +134,7 @@ class Campaign(BaseChimpObject):
             self.list = self.master.get_list_by_id(self.list_id)
         except MCListDoesNotExist:
             self.list = None
+
         self._content = None
         self.frozen_info = info
 
@@ -178,9 +198,11 @@ class Member(BaseChimpObject):
         return self.email
 
     def __getattr__(self, attr):
-        if attr in self._extended_attrs:
-            return self.info[attr]
-        raise AttributeError, attr
+        if attr not in self._extended_attrs:
+            raise AttributeError(attr)
+
+        return self.info[attr]
+
 
     @property
     def interests(self):
@@ -217,7 +239,7 @@ class List(BaseChimpObject):
     '''
     _methods = ('batch_subscribe',
                 'batch_unsubscribe',
-                'subscribe', # Sig: (email_address,merge_vars{},email_type='text',double_optin=True)
+                'subscribe',  # Sig: (email_address,merge_vars{},email_type='text',double_optin=True)
                 'unsubscribe')
 
     _attrs = ('id', 'date_created', 'name', 'web_id', 'stats')
@@ -521,57 +543,97 @@ class Connection(object):
                 return obj
         raise self.DOES_NOT_EXIST[thing]('%s=%s' % (name, key))
 
-    def create_campaign(self, campaign_type, campaign_list, template, subject,
-            from_email, from_name, to_name, folder_id=None,
-            tracking=None, title='',
-            authenticate=False, analytics=None, auto_footer=False,
-            generate_text=False, auto_tweet=False, segment_opts=None,
-            type_opts=None):
+    def create_campaign(self,
+                        campaign_type,
+                        campaign_list,
+                        template,
+                        subject,
+                        from_email,
+                        from_name,
+                        to_name,
+                        folder_id=None,
+                        tracking=None,
+                        title='',
+                        authenticate=False,
+                        analytics=None,
+                        auto_footer=False,
+                        generate_text=False,
+                        auto_tweet=False,
+                        segment_opts=None,
+                        type_opts=None):
         """
         Creates a new campaign and returns it for the arguments given.
         """
-        tracking = tracking or {'opens':True, 'html_clicks': True}
+        tracking = tracking or {'opens': True,
+                                'html_clicks': True}
         type_opts = type_opts or {}
         segment_opts = segment_opts or {}
         analytics = analytics or {}
-        options = {}
+        options = {
+            'list_id': campaign_list.id,
+            'template_id': template.id,
+            'subject': subject,
+            'from_email': from_email,
+            'from_name': from_name,
+            'to_name': to_name,
+            'tracking': tracking,
+            'authenticate': bool(authenticate),
+            'auto_footer': bool(auto_footer),
+            'generate_text': bool(generate_text),
+            'auto_tweet': bool(auto_tweet),
+        }
+
         if title:
             options['title'] = title
         else:
             options['title'] = subject
-        options['list_id'] = campaign_list.id
-        options['template_id'] = template.id
-        options['subject'] = subject
-        options['from_email'] = from_email
-        options['from_name'] = from_name
-        options['to_name'] = to_name
+
         if folder_id:
             options['folder_id'] = folder_id
-        options['tracking'] = tracking
-        options['authenticate'] = bool(authenticate)
         if analytics:
             options['analytics'] = analytics
-        options['auto_footer'] = bool(auto_footer)
-        options['generate_text'] = bool(generate_text)
-        options['auto_tweet'] = bool(auto_tweet)
+
         content = dict(template)
         kwargs = {}
+
         if segment_opts.get('conditions', None):
             kwargs['segment_opts'] = segment_opts
+
         if type_opts:
             kwargs['type_opts'] = type_opts
-        cid = self.con.campaign_create(campaign_type, options, content,
-            **kwargs)
+
+        cid = self.con.campaign_create(campaign_type,
+                                       options,
+                                       content,
+                                       **kwargs)
         camp = self.get_campaign_by_id(cid)
         camp.template_object = template
+
         return camp
 
-    def queue(self, campaign_type, contents, list_id, template_id, subject,
-                from_email, from_name, to_name, folder_id=None, tracking_opens=True,
-                tracking_html_clicks=True, tracking_text_clicks=False, title=None,
-                authenticate=False, google_analytics=None, auto_footer=False,
-                auto_tweet=False, segment_options=False, segment_options_all=True,
-                segment_options_conditions=None, type_opts=None, obj=None):
+    def queue(self,
+              campaign_type,
+              contents,
+              list_id,
+              template_id,
+              subject,
+              from_email,
+              from_name,
+              to_name,
+              folder_id=None,
+              tracking_opens=True,
+              tracking_html_clicks=True,
+              tracking_text_clicks=False,
+              title=None,
+              authenticate=False,
+              google_analytics=None,
+              auto_footer=False,
+              auto_tweet=False,
+              segment_options=False,
+              segment_options_all=True,
+              segment_options_conditions=None,
+              type_opts=None,
+              obj=None):
 
         from mailchimp.models import Queue
         segment_options_conditions = segment_options_conditions or []

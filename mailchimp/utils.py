@@ -26,7 +26,6 @@ from django.http import (HttpResponse,
                          HttpResponseGone,
                          HttpResponseServerError)
 
-from mailchimp.chimp import Connection
 from mailchimp.settings import (API_KEY,
                                 SECURE,
                                 REAL_CACHE,
@@ -455,9 +454,16 @@ def is_queued_or_sent(object):
 
 # this has to be down here to prevent circular imports
 # open a non-connected connection (lazily connect on first get_connection call)
-CONNECTION = Connection(secure=SECURE)
+CONNECTION = None
 
 def get_connection():
+    global CONNECTION
+
+    from mailchimp.chimp import Connection
+
+    if not CONNECTION:
+        CONNECTION = Connection(secure=SECURE)
+
     if not CONNECTION.is_connected:
         CONNECTION.connect(API_KEY)
     return CONNECTION
