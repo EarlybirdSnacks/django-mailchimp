@@ -5,18 +5,24 @@ from django.contrib.sites.models import Site
 
 from mailchimp.chimpy.chimpy import (Connection as BaseConnection,
                                      ChimpyException)
-from mailchimp.utils import (wrap,
-                             build_dict,
-                             Cache,
-                             WarningLogger)
-from mailchimp.exceptions import (MCCampaignDoesNotExist,
+
+from .settings import WEBHOOK_KEY
+from .utils import (build_dict,
+                    Cache,
+                    WarningLogger)
+from .exceptions import (MCCampaignDoesNotExist,
                                   MCListDoesNotExist,
                                   MCConnectionFailed,
                                   MCTemplateDoesNotExist,
                                   MCFolderDoesNotExist)
 
-from mailchimp.constants import *
-from mailchimp.settings import WEBHOOK_KEY
+from .constants import (STATUS_OK,
+                        REGULAR_CAMPAIGN,
+                        PLAINTEXT_CAMPAIGN,
+                        ABSPLIT_CAMPAIGN,
+                        RSS_CAMPAIGN,
+                        TRANS_CAMPAIGN,
+                        AUTO_CAMPAIGN)
 
 
 class SegmentCondition(object):
@@ -73,6 +79,7 @@ class BaseChimpObject(object):
     cache_key = 'id'
 
     def __init__(self, master, info):
+        from mailchimp.utils import wrap
         self.master = master
         for attr in self._attrs:
             setattr(self, attr, info[attr])
